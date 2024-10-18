@@ -3,7 +3,7 @@ from threading import Thread
 import queue
 import time
 from utils import doc_manager, agent_manager
-
+import os
 # Initialize Flask app
 app = Flask(__name__,
             static_url_path='/static',
@@ -85,4 +85,5 @@ def ask():
         }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
