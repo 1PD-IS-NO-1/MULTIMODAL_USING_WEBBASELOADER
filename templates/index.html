@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Chatbot</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header with Indian-style design -->
+        <div class="bg-gradient-to-r from-orange-500 via-white to-green-500 p-6 rounded-lg shadow-lg mb-8">
+            <div class="flex items-center justify-center">
+                <img src="/static/ashoka-chakra.png" alt="Indian Symbol" class="h-16 mr-4">
+                <h1 class="text-3xl font-bold text-gray-800 text-center">
+                    Documentation Chatbot
+                    <div class="text-sm mt-2">
+                        LangChain • LangSmith • Llama-Index • Sentence-Transformers • Wikipedia
+                    </div>
+                </h1>
+            </div>
+        </div>
+
+        <!-- Update Documentation Button -->
+        <div class="mb-8 text-center">
+            <button onclick="updateDocumentation()" 
+                    id="update-btn"
+                    class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                Update Documentation
+            </button>
+            <div id="update-status" class="mt-2 text-sm"></div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column: Chat and Process -->
+            <div class="space-y-6">
+                <!-- Question Input -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex space-x-4">
+                        <input type="text" id="question" placeholder="Ask your question..." 
+                               class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="askQuestion()" 
+                                id="ask-btn"
+                                class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            Ask
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Thinking Process -->
+                <div id="thinking-process" class="bg-white rounded-lg shadow-md p-6 hidden">
+                    <h2 class="text-xl font-semibold mb-4">Thinking Process</h2>
+                    <div id="steps" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Final Answer -->
+            <div id="answer-container" class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Final Answer</h2>
+                <div id="final-answer" class="prose max-w-none"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function updateDocumentation() {
+            const updateStatus = document.getElementById('update-status');
+            const updateButton = document.getElementById('update-btn');
+            
+            try {
+                updateButton.disabled = true;
+                updateButton.classList.add('opacity-50', 'cursor-not-allowed');
+                updateStatus.innerHTML = '<span class="text-blue-600">Updating documentation... This may take a few minutes.</span>';
+
+                const response = await fetch('/update_docs', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    updateStatus.innerHTML = `<span class="text-green-600">${data.message}</span>`;
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                updateStatus.innerHTML = `<span class="text-red-600">Error updating documentation: ${error.message}</span>`;
+            } finally {
+                updateButton.disabled = false;
+                updateButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            const askButton = document.getElementById('ask-btn');
+            const thinkingProcess = document.getElementById('thinking-process');
+            const stepsContainer = document.getElementById('steps');
+            const answerContainer = document.getElementById('answer-container');
+            const finalAnswer = document.getElementById('final-answer');
+            
+            if (!question.trim()) return;
+
+            try {
+                // Reset UI state
+                askButton.disabled = true;
+                askButton.classList.add('opacity-50', 'cursor-not-allowed');
+                thinkingProcess.classList.remove('hidden');
+                stepsContainer.innerHTML = '<div class="text-blue-600">Thinking...</div>';
+                answerContainer.classList.remove('hidden');
+                finalAnswer.innerHTML = '';
+
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'An error occurred');
+                }
+
+                // Display thinking process
+                stepsContainer.innerHTML = '';
+                if (data.steps && Array.isArray(data.steps)) {
+                    data.steps.forEach(step => {
+                        const stepElement = document.createElement('div');
+                        stepElement.className = 'bg-gray-50 p-4 rounded-lg mb-4';
+                        stepElement.innerHTML = `
+                            <div class="text-blue-600 font-medium">Thought:</div>
+                            <div class="mb-2">${escapeHtml(step.thought)}</div>
+                            <div class="text-green-600 font-medium">Action:</div>
+                            <div class="mb-2">${escapeHtml(step.action)} (${escapeHtml(step.action_input)})</div>
+                            <div class="text-purple-600 font-medium">Observation:</div>
+                            <div>${escapeHtml(step.observation)}</div>
+                        `;
+                        stepsContainer.appendChild(stepElement);
+                    });
+                }
+
+                // Display final answer
+                if (data.answer) {
+                    finalAnswer.innerHTML = marked.parse(data.answer);
+                    // Apply syntax highlighting
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightBlock(block);
+                    });
+                } else {
+                    finalAnswer.innerHTML = '<div class="text-red-600">No answer was provided by the server.</div>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                stepsContainer.innerHTML = `
+                    <div class="text-red-600">
+                        Error: ${error.message}
+                    </div>
+                `;
+                finalAnswer.innerHTML = `
+                    <div class="text-red-600">
+                        An error occurred while processing your question. Please try again.
+                    </div>
+                `;
+            } finally {
+                askButton.disabled = false;
+                askButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Handle Enter key in input field
+        document.getElementById('question').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+python-dotenv
+langchain
+langchain_community
+langchain_google_genai
+langchain-pinecone
+pinecone-client
+wikipedia
+google-generativeai
+flask
+markdown
