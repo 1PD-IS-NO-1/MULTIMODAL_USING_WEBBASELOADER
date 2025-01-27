@@ -15,8 +15,8 @@ from typing import List, Union
 import re
 
 # API Keys
-PINECONE_API_KEY = "4654cfdd-d0fc-44d3-b440-70831b204414"
-GOOGLE_API_KEY = "AIzaSyCF-jMEoZr2ji5kmJvYg4HQGWG--Bq8n84"
+PINECONE_API_KEY = "PASTE YOUR PINECOND API KEY"
+GOOGLE_API_KEY = "PASTE YOUR GEMINI API KEY"
 
 # Document sources
 doc_sources = {
